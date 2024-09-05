@@ -1,0 +1,6 @@
+name: "Test mod"
+description: "A test mod"
+version: "1.5.2"
+
+precompiled: true
+run: "main.wat"
