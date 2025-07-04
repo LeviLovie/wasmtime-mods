@@ -1,5 +1,15 @@
 use wasmtime::*;
 
+struct State {
+    name: String,
+    count: i32,
+}
+impl std::fmt::Display for State {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "State {{ name: {}, count: {} }}", self.name, self.count)
+    }
+}
+
 pub struct Mod {
     name: String,
     description: String,
@@ -168,11 +178,12 @@ impl Mod {
 
         let mut linker = Linker::new(&engine);
         match linker.func_wrap(
-            "host",
-            "host_func",
-            |caller: Caller<'_, u32>, param: i32| {
-                println!("Got {} from WebAssembly", param);
-                println!("my host state is: {}", caller.data());
+            "",
+            "hello",
+            |mut caller: Caller<'_, State>| {
+                println!("Calling back...");
+                println!("> {}", caller.data().name);
+                caller.data_mut().count += 1;
             },
         ) {
             Ok(_) => {}
@@ -182,7 +193,10 @@ impl Mod {
             }
         };
 
-        let mut store: Store<u32> = Store::new(&engine, 4);
+        let mut store: Store<State> = Store::new(&engine, State {
+            name: "Hello from host!".to_string(),
+            count: 0,
+        });
 
         let instance = match linker.instantiate(&mut store, &module) {
             Ok(i) => i,
@@ -191,7 +205,7 @@ impl Mod {
                 std::process::exit(1);
             }
         };
-        let hello = match instance.get_typed_func::<(), ()>(&mut store, "hello") {
+        let hello = match instance.get_typed_func::<(), ()>(&mut store, "run") {
             Ok(h) => h,
             Err(e) => {
                 error!("Failed to get the hello function: {}", e);
